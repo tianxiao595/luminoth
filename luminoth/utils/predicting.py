@@ -117,7 +117,12 @@ def get_prediction(image, config, total=None, session=None,
                 )
                 session.run(init_op)
 
-            if config.model.network.with_rcnn:
+            if config.model.type == 'ssd':
+                cls_prediction = pred_dict['classification_prediction']
+                objects_tf = cls_prediction['objects']
+                objects_labels_tf = cls_prediction['labels']
+                objects_labels_prob_tf = cls_prediction['probs']
+            elif config.model.network.get('with_rcnn', False):
                 cls_prediction = pred_dict['classification_prediction']
                 objects_tf = cls_prediction['objects']
                 objects_labels_tf = cls_prediction['labels']
@@ -184,3 +189,17 @@ def get_prediction(image, config, total=None, session=None,
         res['session'] = session
 
     return res
+
+
+# TODO: move / remove ?
+def resize_image_fixed(image, new_height, new_width):
+    """
+    Resizes `image` if it's necesary
+    """
+    scale_height = new_height / image.height
+    scale_width = new_width / image.width
+    image = image.resize((new_height, new_width))
+    image_array = np.array(image)[:, :, :3]  # TODO Read RGB
+    image_array = np.expand_dims(image_array, axis=0)
+
+    return image_array, scale_height, scale_width
