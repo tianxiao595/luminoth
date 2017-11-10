@@ -26,7 +26,7 @@ VALID_ARCHITECTURES = set([
 ])
 
 
-class BaseNetwork(snt.AbstractModule):
+class ImageClassifier(snt.AbstractModule):
     """
     Convolutional Neural Network used for image classification, whose
     architecture can be any of the `VALID_ARCHITECTURES`.
@@ -35,8 +35,8 @@ class BaseNetwork(snt.AbstractModule):
     helpful additions.
     """
 
-    def __init__(self, config, name='base_network'):
-        super(BaseNetwork, self).__init__(name=name)
+    def __init__(self, config, name='image_classifier'):
+        super(ImageClassifier, self).__init__(name=name)
         if config.get('architecture') not in VALID_ARCHITECTURES:
             raise ValueError('Invalid architecture: "{}"'.format(
                 config.get('architecture')
@@ -168,13 +168,15 @@ class BaseNetwork(snt.AbstractModule):
         """
         if self._config.get('weights') is None and \
            not self._config.get('download'):
-            return tf.no_op(name='not_loading_base_network')
+            return tf.no_op(name='not_loading_{}'.format(self._original_name))
 
         if self._config.get('weights') is None:
-            # Download the weights (or used cached) if not specified in the
-            # config file.
-            # Weights are downloaded by default to the ~/.luminoth folder if
-            # running locally, or to the job bucket if running in Google Cloud.
+            # If the path to the checkpoint file is not specified in the
+            # config, we will either download them or use a cached version
+            # if it exists.
+            # By defaults, checkpoints are downloaded to the ~/.luminoth folder
+            # if running locally, or to the job bucket if running in Google
+            # Cloud.
             self._config['weights'] = get_checkpoint_file(self._architecture)
 
         module_variables = snt.get_variables_in_module(

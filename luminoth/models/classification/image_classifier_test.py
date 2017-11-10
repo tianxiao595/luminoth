@@ -3,8 +3,8 @@ import easydict
 import numpy as np
 import tensorflow as tf
 
-from luminoth.models.base.base_network import (
-    BaseNetwork, _R_MEAN, _G_MEAN, _B_MEAN, VALID_ARCHITECTURES
+from luminoth.models.classification.image_classifier import (
+    ImageClassifier, _R_MEAN, _G_MEAN, _B_MEAN, VALID_ARCHITECTURES
 )
 
 
@@ -17,14 +17,14 @@ class BaseNetworkTest(tf.test.TestCase):
         tf.reset_default_graph()
 
     def testDefaultImageSize(self):
-        m = BaseNetwork(easydict.EasyDict({'architecture': 'vgg_16'}))
+        m = ImageClassifier(easydict.EasyDict({'architecture': 'vgg_16'}))
         self.assertEqual(m.default_image_size, 224)
 
-        m = BaseNetwork(easydict.EasyDict({'architecture': 'resnet_v1_50'}))
+        m = ImageClassifier(easydict.EasyDict({'architecture': 'resnet_v1_50'}))
         self.assertEqual(m.default_image_size, 224)
 
     def testSubtractChannels(self):
-        m = BaseNetwork(self.config)
+        m = ImageClassifier(self.config)
         inputs = tf.placeholder(tf.float32, [1, 2, 2, 3])
         subtracted_inputs = m._subtract_channels(inputs)
         # White image
@@ -46,7 +46,7 @@ class BaseNetworkTest(tf.test.TestCase):
     def testAllArchitectures(self):
         for architecture in VALID_ARCHITECTURES:
             self.config.architecture = architecture
-            m = BaseNetwork(self.config)
+            m = ImageClassifier(self.config)
             inputs = tf.placeholder(tf.float32, [1, None, None, 3])
             # Should not fail.
             m(inputs)
@@ -57,7 +57,7 @@ class BaseNetworkTest(tf.test.TestCase):
     def testTrainableVariables(self):
         inputs = tf.placeholder(tf.float32, [1, 224, 224, 3])
 
-        model = BaseNetwork(easydict.EasyDict({'architecture': 'vgg_16'}))
+        model = ImageClassifier(easydict.EasyDict({'architecture': 'vgg_16'}))
         model(inputs)
         # Variables in VGG16:
         #   0 conv1/conv1_1/weights:0
@@ -68,7 +68,7 @@ class BaseNetworkTest(tf.test.TestCase):
 
         self.assertEqual(len(model.get_trainable_vars()), 32)
 
-        model = BaseNetwork(
+        model = ImageClassifier(
             easydict.EasyDict(
                 {'architecture': 'vgg_16', 'fine_tune_from': 'conv5/conv5_3'}
             )
@@ -88,7 +88,7 @@ class BaseNetworkTest(tf.test.TestCase):
         #
         # Check invalid fine_tune_from raises proper exception
         #
-        model = BaseNetwork(
+        model = ImageClassifier(
             easydict.EasyDict(
                 {'architecture': 'vgg_16', 'fine_tune_from': 'conv5/conv99'}
             )
