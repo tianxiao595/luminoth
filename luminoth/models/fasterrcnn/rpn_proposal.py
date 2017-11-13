@@ -97,6 +97,23 @@ class RPNProposal(snt.AbstractModule):
             all_scores, self._min_prob_threshold
         )
 
+        # TODO: find a way to make sure we don't get empty tensors into
+        # tf.image.non_max_supression.
+        # The current solution has the following problems: (i) it's
+        # inefficient, (ii) it doesn't really make sure we're not getting an
+        # empty tensor, it only deals with the most common case.
+        def update_filter(x):
+            self._min_prob_threshold /= 2
+            return tf.greater_equal(
+                all_scores, self._min_prob_threshold
+            )
+
+        min_prob_filter = tf.while_loop(
+            cond=lambda x: tf.logical_not(tf.reduce_any(x)),
+            body=update_filter,
+            loop_vars=[min_prob_filter]
+        )
+
         # Filter proposals with negative or zero area.
         (x_min, y_min, x_max, y_max) = tf.unstack(all_proposals, axis=1)
         zero_area_filter = tf.greater(
