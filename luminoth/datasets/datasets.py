@@ -1,7 +1,7 @@
-from luminoth.datasets.tfrecord import TFRecordDataset
+from luminoth.datasets.object_detection_dataset import ObjectDetectionDataset
 
 DATASETS = {
-    'tfrecord': TFRecordDataset,
+    'object_detection': ObjectDetectionDataset,
 }
 
 
