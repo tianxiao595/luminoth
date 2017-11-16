@@ -2,7 +2,7 @@ import numpy as np
 import sonnet as snt
 import tensorflow as tf
 
-from luminoth.models.fasterrcnn.rcnn import RCNN
+from luminoth.models.fasterrcnn.pcnn import PCNN
 from luminoth.models.fasterrcnn.rpn import RPN
 from luminoth.models.base import TruncatedBaseNetwork
 from luminoth.utils.anchors import generate_anchors_reference
@@ -110,8 +110,8 @@ class FasterRCNN(snt.AbstractModule):
         if self._with_rcnn:
             # The RCNN submodule which classifies RPN's proposals and
             # classifies them as background or a specific class.
-            self._rcnn = RCNN(
-                self._num_classes, self._config.model.rcnn,
+            self._rcnn = PCNN(
+                self._config.model.rcnn,
                 debug=self._debug, seed=self._seed
             )
 
