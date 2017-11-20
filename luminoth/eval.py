@@ -80,7 +80,7 @@ def evaluate(dataset_split, config_files, job_dir, watch,
         pred_objects_scores = pred['probs']
     else:
         # Force the num_classes to 1
-        config.model.network.num_classes = 1
+        config.dataset.num_classes = 1
 
         pred = prediction_dict['rpn_prediction']
         pred_objects = pred['proposals']
@@ -348,7 +348,7 @@ def evaluate_once(config, writer, saver, ops, checkpoint,
             # Save final evaluation stats into summary under the checkpoint's
             # global step.
             map_0_5, per_class_0_5 = calculate_map(
-                output_per_batch, config.model.network.num_classes, 0.5
+                output_per_batch, config.dataset.num_classes, 0.5
             )
 
             tf.logging.info('Finished evaluation at step {}.'.format(

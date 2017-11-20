@@ -16,9 +16,11 @@ class FasterRCNNNetworkTest(tf.test.TestCase):
                 'debug': True,
                 'seed': None,
             },
+            'dataset': {
+                'num_classes': 20
+            },
             'model': {
                 'network': {
-                    'num_classes': 20,
                     'with_rcnn': True
                 },
                 'anchors': {
@@ -197,7 +199,7 @@ class FasterRCNNNetworkTest(tf.test.TestCase):
         # Check that every object label is less or equal than 'num_classes'
         self.assertTrue(
             np.less_equal(class_prediction['labels'],
-                          self.config.model.network.num_classes).all()
+                          self.config.dataset.num_classes).all()
         )
 
         # Check that the sum of class probabilities is 1
@@ -410,7 +412,7 @@ class FasterRCNNNetworkTest(tf.test.TestCase):
         #   RCNN
 
         # Set the number of classes
-        num_classes = config.model.network.num_classes
+        num_classes = config.dataset.num_classes
 
         # Randomly generate the bbox_offsets for the correct class = 1
         prediction_dict_random['classification_prediction']['target'] = {

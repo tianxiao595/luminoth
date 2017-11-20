@@ -29,7 +29,7 @@ class FasterRCNN(snt.AbstractModule):
 
         # Total number of classes to classify. If not using RCNN then it is not
         # used. TODO: Make it *more* optional.
-        self._num_classes = config.model.network.num_classes
+        self._num_classes = config.dataset.num_classes
 
         # Generate network with RCNN thus allowing for classification of
         # objects and not just finding them.
