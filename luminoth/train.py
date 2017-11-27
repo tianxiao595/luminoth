@@ -77,8 +77,8 @@ def run(config, target='', cluster_spec=None, is_chief=True, job_name=None,
                 total_loss, trainable_vars
             )
 
-            # Clip by norm. TODO: Configurable
-            grads_and_vars = clip_gradients_by_norm(grads_and_vars)
+            if config.train.get('clip_gradients'):
+                grads_and_vars = clip_gradients_by_norm(grads_and_vars)
 
         train_op = optimizer.apply_gradients(
             grads_and_vars, global_step=global_step
