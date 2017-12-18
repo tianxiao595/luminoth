@@ -4,6 +4,7 @@ import tensorflow.contrib.slim as slim
 
 from luminoth.models.base import BaseNetwork
 from luminoth.utils.checkpoint_downloader import get_checkpoint_file
+from tensorflow.contrib.slim import nets
 
 VALID_ARCHITECTURES = set([
     'vgg_16',
@@ -24,75 +25,60 @@ class FullyConvolutionalNetwork(BaseNetwork):
         self._config = config
         self.parent_name = parent_name
 
-    def network(self, inputs, is_training=True):
-        endpoints = {}
-        if self.vgg_type:
-            scope = self.module_name
-            if self.parent_name:
-                scope = self.parent_name + '/' + scope
-
-            vgg_endpoints = {}
-            with tf.variable_scope('vgg_16', [inputs], reuse=None):
-                # Original VGG-16 blocks.
-                net = slim.repeat(inputs, 2, slim.conv2d, 64, [3, 3],
-                                  scope='conv1')
-                net = slim.max_pool2d(net, [2, 2], scope='pool1')
-                # Block 2.
-                net = slim.repeat(net, 2, slim.conv2d, 128, [3, 3],
-                                  scope='conv2')
-                net = slim.max_pool2d(net, [2, 2], scope='pool2')
-                # Block 3.
-                net = slim.repeat(net, 3, slim.conv2d, 256, [3, 3],
-                                  scope='conv3')
-                net = slim.max_pool2d(net, [2, 2], scope='pool3')
-                # Block 4.
-                net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3],
-                                  scope='conv4')
-                vgg_endpoints[scope + '/vgg_16/conv4/conv4_3'] = net
-                net = slim.max_pool2d(net, [2, 2], scope='pool4')
-                # Block 5.
-                net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3],
-                                  scope='conv5')
-                vgg_endpoints[scope + '/vgg_16/conv5/conv5_3'] = net
-            with tf.variable_scope('vgg_16', reuse=None):
-                net = slim.conv2d(net, 4096, [7, 7], padding='VALID',
-                                  scope='fc6')
-                net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
-
-            # Add padding to divide by 2 without loss
-            conv4_3 = vgg_endpoints[scope + '/vgg_16/conv4/conv4_3']
-            paddings = [[0, 0], [1, 0], [1, 0], [0, 0]]
-            conv4_3 = tf.pad(conv4_3, paddings, mode='CONSTANT')
-            endpoints['vgg_16/conv4/conv4_3'] = conv4_3
-
-            # Add padding to divide by 2 without loss
-            conv5_3 = vgg_endpoints[scope + '/vgg_16/conv5/conv5_3']
-            paddings = [[0, 0], [1, 0], [1, 0], [0, 0]]
-            conv5_3 = tf.pad(conv5_3, paddings, mode='CONSTANT')
-            net = slim.max_pool2d(conv5_3, [3, 3], stride=1, scope='pool5',
-                                  padding='SAME')
-
-            # Additional SSD blocks.
-            # Block 6: Use atrous convolution
-            net = slim.conv2d(net, 1024, [3, 3], rate=6, scope='conv6',
-                              padding='SAME')
-            endpoints['vgg_16/fc6'] = net
-            # Block 7: 1x1 conv
-            net = slim.conv2d(net, 1024, [1, 1], scope='conv7')
-            endpoints['vgg_16/fc7'] = net
-            return net, endpoints, vgg_endpoints
-
     def _build(self, inputs, is_training=True):
-        inputs = self.preprocess(inputs)
-        with slim.arg_scope(self.arg_scope):
-            net, end_points, vgg_endpoints = self.network(
-                inputs, is_training=is_training)
+        # We'll plug our SSD predictors to these endpoints
+        feature_endpoints = {}
 
-            return {
-                'net': net,
-                'end_points': end_points,
-                'vgg_end_points': vgg_endpoints
-            }
+        # Build the truncated base network onto which we'll build our the extra
+        # SSD feature layers
+        if self.vgg_type:
+            _, vgg_endpoints = nets.vgg.vgg_16(inputs, is_training=is_training,
+                                               spatial_squeeze=False)
+            feature_endpoints['conv4'] = vgg_endpoints[self.module_name +
+                                                       '/vgg_16/conv4/conv4_3']
+            base_network_truncation_endpoint = vgg_endpoints[self.module_name +
+                                                             '/vgg_16/conv5/conv5_3']
+
+        # TODO add some padding to recover the features we lost due to differences in
+        #      maxpool between Caffe and tf.slim
+
+        # Add SSD extra feature layers after the truncated base network
+        with tf.variable_scope('pool5'):
+            net = slim.max_pool2d(base_network_truncation_endpoint, [3, 3],
+                                  stride=1, scope='pool5')
+        with tf.variable_scope('conv6'):
+            net = slim.conv2d(net, 1024, [3, 3], rate=6, scope='conv6')
+
+        endpoint_name = 'conv7'
+        with tf.variable_scope(endpoint_name):
+            net = slim.conv2d(net, 1024, [1, 1], scope='conv7')
+        feature_endpoints[endpoint_name] = net
+
+        endpoint_name = 'conv8'
+        with tf.variable_scope(endpoint_name):
+            net = slim.conv2d(net, 256, [1, 1], scope='conv8_1')
+            net = slim.conv2d(net, 512, [3, 3], stride=2, scope='conv8_2', padding='VALID')
+        feature_endpoints[endpoint_name] = net
+
+        endpoint_name = 'conv9'
+        with tf.variable_scope(endpoint_name):
+            net = slim.conv2d(net, 128, [1, 1], scope='conv9_1')
+            net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv9_2', padding='VALID')
+        feature_endpoints[endpoint_name] = net
+
+        endpoint_name = 'conv10'
+        with tf.variable_scope(endpoint_name):
+            net = slim.conv2d(net, 128, [1, 1], scope='conv10_1')
+            net = slim.conv2d(net, 256, [3, 3], scope='conv10_2', padding='VALID')
+        feature_endpoints[endpoint_name] = net
+
+        endpoint_name = 'conv11'
+        with tf.variable_scope(endpoint_name):
+            net = slim.conv2d(net, 128, [1, 1], scope='conv11_1')
+            net = slim.conv2d(net, 256, [3, 3], scope='conv11_2', padding='VALID')
+        feature_endpoints[endpoint_name] = net
+
+        return feature_endpoints
 
     def load_weights(self):
         """

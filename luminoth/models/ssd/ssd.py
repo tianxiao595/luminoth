@@ -106,42 +106,13 @@ class SSD(snt.AbstractModule):
         if gt_boxes is not None:
             gt_boxes = tf.cast(gt_boxes, tf.float32)
 
-        # Set rank and last dimension before using base network
-        # TODO: Why does it loose information when using queue?
         image.set_shape((None, None, 3))
         image = tf.expand_dims(image, 0)
+        tf.summary.image('input_image', image)
 
         # Dictionary with the endpoints from the base network
-        base_network_endpoints = self.base_network(
-            image, is_training=is_training)['end_points']
-
-        net = base_network_endpoints[
-            self._config.model.base_network.hook_endpoint]
-
-        with tf.variable_scope('ssd_1'):
-            net = slim.conv2d(net, 256, [1, 1], scope='conv1x1')
-            paddings = [[0, 0], [1, 1], [1, 1], [0, 0]]
-            net = tf.pad(net, paddings, mode='CONSTANT')
-            net = slim.conv2d(net, 512, [3, 3], stride=2, scope='conv3x3',
-                              padding='VALID')
-            base_network_endpoints['ssd_1'] = net
-        with tf.variable_scope('ssd_2'):
-            net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
-            paddings = [[0, 0], [1, 1], [1, 1], [0, 0]]
-            net = tf.pad(net, paddings, mode='CONSTANT')
-            net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv3x3',
-                              padding='VALID')
-            base_network_endpoints['ssd_2'] = net
-        with tf.variable_scope('ssd_3'):
-            net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
-            net = slim.conv2d(net, 256, [3, 3], scope='conv3x3',
-                              padding='VALID')
-            base_network_endpoints['ssd_3'] = net
-        with tf.variable_scope('ssd_4'):
-            net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
-            net = slim.conv2d(net, 256, [3, 3], scope='conv3x3',
-                              padding='VALID')
-            base_network_endpoints['ssd_4'] = net
+        base_network_endpoints = self.base_network(image,
+                                                   is_training=is_training)
 
         # Do the predictions for each feature map
         predictions = {}
