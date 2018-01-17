@@ -222,7 +222,7 @@ class SSD(snt.AbstractModule):
 
         return prediction_dict
 
-    def loss(self, prediction_dict):
+    def loss(self, prediction_dict, return_all=False):
         """Compute the loss for SSD.
 
         Args:
@@ -322,6 +322,13 @@ class SSD(snt.AbstractModule):
                 'total_loss', total_loss,
                 collections=self._losses_collections
             )
+
+            if return_all:
+                total_loss = {
+                    'total_loss': total_loss,
+                    'cls_loss': cls_loss,
+                    'bbox_loss': bbox_loss,
+                }
 
             return total_loss
 
