@@ -59,7 +59,7 @@ train:
   num_epochs: 10000
 
   # Image visualization mode, options = train, eval, debug, (empty). Default=(empty)
-  image_vis: train
+  image_vis: debug
 
 eval:
   # Image visualization mode, options = train, eval, debug, (empty). Default=(empty)
